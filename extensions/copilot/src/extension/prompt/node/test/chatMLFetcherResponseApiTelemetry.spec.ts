@@ -731,6 +731,7 @@ function createMockChatQuotaService(): IChatQuotaService {
 	return {
 		_serviceBrand: undefined,
 		processQuotaHeaders: () => { },
+		recordSessionUsage: () => { },
 	} as unknown as IChatQuotaService;
 }
 

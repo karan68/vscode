@@ -8,6 +8,7 @@ import { AuthenticationContrib } from '../../authentication/vscode-node/authenti
 import { BYOKContrib } from '../../byok/vscode-node/byokContribution';
 import { ChatDebugFileLoggerContribution } from '../../chat/vscode-node/chatDebugFileLoggerService';
 import { ChatQuotaContribution } from '../../chat/vscode-node/chatQuota.contribution';
+import { SessionCostStatusBarContribution } from '../../chat/vscode-node/sessionCost.contribution';
 import { ChatSessionContextContribution } from '../../chatSessionContext/vscode-node/chatSessionContextProvider';
 import { ChatSessionsContrib } from '../../chatSessions/vscode-node/chatSessions';
 import { SessionStoreTracker } from '../../chronicle/vscode-node/sessionStoreTracker';
@@ -92,6 +93,7 @@ export const vscodeNodeContributions: IExtensionContributionFactory[] = [
 	asContributionFactory(NesRenameContribution),
 	asContributionFactory(SearchPanelCommands),
 	asContributionFactory(ChatQuotaContribution),
+	asContributionFactory(SessionCostStatusBarContribution),
 	asContributionFactory(NotebookFollowCommands),
 	asContributionFactory(PromptFileContextContribution),
 	asContributionFactory(ScmContextProviderContribution),

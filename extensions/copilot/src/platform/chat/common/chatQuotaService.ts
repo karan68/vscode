@@ -6,6 +6,29 @@
 import { createServiceIdentifier } from '../../../util/common/services';
 import { Event } from '../../../util/vs/base/common/event';
 import { IHeaders } from '../../networking/common/fetcherService';
+import type { APIUsage } from '../../networking/common/openai';
+
+/**
+ * Accumulated token + billing usage for the current extension session. Fed from
+ * each successful chat completion's `usage` block (see chatMLFetcher), this powers
+ * the session cost status bar item. `nanoAiu` are Copilot billing units where
+ * 1 AIC = 1_000_000_000 nano-AIU; cost data is approximate (see Copilot docs).
+ */
+export interface ISessionUsageTotals {
+	readonly requestCount: number;
+	readonly promptTokens: number;
+	readonly completionTokens: number;
+	readonly totalTokens: number;
+	readonly cachedTokens: number;
+	readonly nanoAiu: number;
+	/** The most recent request's usage, for a "this chat" readout. */
+	readonly last: {
+		readonly promptTokens: number;
+		readonly completionTokens: number;
+		readonly totalTokens: number;
+		readonly nanoAiu: number;
+	} | undefined;
+}
 
 /**
  * This is the quota info we get from the `copilot_internal/user` endpoint.
@@ -89,6 +112,12 @@ export interface IChatQuotaService {
 	setLastCopilotUsage(totalNanoAiu: number, turnId: string): void;
 	/** Reset accumulated credits for the given turn. */
 	resetTurnCredits(turnId: string): void;
+	/** Running token + AIU totals for this session, shown in the cost status bar item. */
+	readonly sessionUsage: ISessionUsageTotals;
+	/** Add one successful completion's usage to the running session totals. Fires onDidChange. */
+	recordSessionUsage(usage: APIUsage): void;
+	/** Clear the running session usage totals. Fires onDidChange. */
+	resetSessionUsage(): void;
 	clearQuota(): void;
 	/**
 	 * Fetches up-to-date quota data from the `copilot_internal/user` endpoint.

@@ -10,7 +10,8 @@ import { IAuthenticationService } from '../../authentication/common/authenticati
 import { ICAPIClientService } from '../../endpoint/common/capiClient';
 import { ILogService } from '../../log/common/logService';
 import { FetchOptions, IHeaders, Response } from '../../networking/common/fetcherService';
-import { CopilotUserQuotaInfo, IChatQuota, IChatQuotaService, QuotaSnapshots } from './chatQuotaService';
+import { CopilotUserQuotaInfo, IChatQuota, IChatQuotaService, ISessionUsageTotals, QuotaSnapshots } from './chatQuotaService';
+import type { APIUsage } from '../../networking/common/openai';
 
 export class ChatQuotaService extends Disposable implements IChatQuotaService {
 	declare readonly _serviceBrand: undefined;
@@ -18,6 +19,17 @@ export class ChatQuotaService extends Disposable implements IChatQuotaService {
 	private _quotaInfo: IChatQuota | undefined;
 	private _rateLimitInfo: { session: IChatQuota | undefined; weekly: IChatQuota | undefined };
 	private readonly _turnCredits = new Map<string, number>();
+
+	// Mutable running totals for the current session (cost status bar item).
+	private readonly _sessionUsage = {
+		requestCount: 0,
+		promptTokens: 0,
+		completionTokens: 0,
+		totalTokens: 0,
+		cachedTokens: 0,
+		nanoAiu: 0,
+		last: undefined as ISessionUsageTotals['last'],
+	};
 
 	private readonly _onDidChange = this._register(new Emitter<void>());
 	readonly onDidChange = this._onDidChange.event;
@@ -77,6 +89,38 @@ export class ChatQuotaService extends Disposable implements IChatQuotaService {
 
 	resetTurnCredits(turnId: string): void {
 		this._turnCredits.delete(turnId);
+	}
+
+	get sessionUsage(): ISessionUsageTotals {
+		return this._sessionUsage;
+	}
+
+	recordSessionUsage(usage: APIUsage): void {
+		const prompt = usage.prompt_tokens ?? 0;
+		const completion = usage.completion_tokens ?? 0;
+		const total = usage.total_tokens ?? (prompt + completion);
+		const cached = usage.prompt_tokens_details?.cached_tokens ?? 0;
+		const nanoAiu = typeof usage.copilot_usage?.total_nano_aiu === 'number' ? usage.copilot_usage.total_nano_aiu : 0;
+
+		this._sessionUsage.requestCount += 1;
+		this._sessionUsage.promptTokens += prompt;
+		this._sessionUsage.completionTokens += completion;
+		this._sessionUsage.totalTokens += total;
+		this._sessionUsage.cachedTokens += cached;
+		this._sessionUsage.nanoAiu += nanoAiu;
+		this._sessionUsage.last = { promptTokens: prompt, completionTokens: completion, totalTokens: total, nanoAiu };
+		this._onDidChange.fire();
+	}
+
+	resetSessionUsage(): void {
+		this._sessionUsage.requestCount = 0;
+		this._sessionUsage.promptTokens = 0;
+		this._sessionUsage.completionTokens = 0;
+		this._sessionUsage.totalTokens = 0;
+		this._sessionUsage.cachedTokens = 0;
+		this._sessionUsage.nanoAiu = 0;
+		this._sessionUsage.last = undefined;
+		this._onDidChange.fire();
 	}
 
 	clearQuota(): void {
